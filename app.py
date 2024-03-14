@@ -2,7 +2,7 @@ import flet as ft
 from views import views_handler
 
 def main(page: ft.Page):
-    page.title = "AR FIT PRO"
+    # page.title = "AR FIT PRO"
     page.scroll = "adaptive"
 
     def route_change(route):
@@ -12,6 +12,12 @@ def main(page: ft.Page):
         page.scroll = "adaptive"
         page.views.append(
         views_handler(page)[page.route])
+
+
+    #-----------------------------#
+    # This line is only for others not for Bansu , because other than Bansu no other person can see home page
+    route_change(page.route)
+    #-----------------------------#
 
 
     page.on_route_change = route_change
