@@ -241,7 +241,7 @@ class Squat_Detection(UserControl):
                 ])
 
         camera = Camera()
-        def stop_Workout(e):
+        def stop_Workout(self,e):
             nonlocal camera
 
             correct_count = camera.correct_count
@@ -260,7 +260,7 @@ class Squat_Detection(UserControl):
             mycol.insert_one(data)
             print("Exercise data inserted into MongoDB.")
 
-            self.page.go('/')
+            self.page.go('/home')
 
             # page.go error
             

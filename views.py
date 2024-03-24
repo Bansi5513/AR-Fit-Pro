@@ -1,6 +1,7 @@
 import flet as ft
 
-# from pages.signup import SignUp
+from pages.signup import SignUp
+from pages.login import Login
 from pages.home import Home
 from pages.bicep_curl_info import BicepCurl_Info
 from pages.bicep_curl_detection import BicepCurl_Detection
@@ -9,20 +10,20 @@ from pages.squat_detection import Squat_Detection
 
 def views_handler(page):
   return {
-    # '/':ft.View(
-    #     route='/',
-    #     controls=[
-    #       SignUp(page)
-    #     ]
-    #   ),
-    # '/home':ft.View(
-    #     route='/home',
-    #     controls=[
-    #       Home(page)
-    #     ]
-    #   ),
     '/':ft.View(
         route='/',
+        controls=[
+          SignUp(page)
+        ]
+      ),
+    '/login':ft.View(
+        route='/login',
+        controls=[
+          Login(page)
+        ]
+      ),
+    '/home':ft.View(
+        route='/home',
         controls=[
           Home(page)
         ]
