@@ -43,16 +43,21 @@ class SignUp(ft.UserControl):
         else:
             error = False
             self.text_username.error_text = ""
-            
+
+        existing_user = mycol.find_one({"Email": self.text_email.value})  
         # Validate email format
         if self.text_email.value and not re.fullmatch(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{1,7}\b', self.text_email.value):
             error = True
             self.submit_button.disabled = True
             self.text_email.error_text = "Invalid email format"
+        elif existing_user:
+            error = True
+            self.submit_button.disabled = True
+            self.text_email.error_text = "Email already exists"
         else:
             error = False
             self.text_email.error_text = ""
-            
+
 
         # Validate password format
         if self.text_password.value and len(self.text_password.value) < 6:
@@ -76,7 +81,6 @@ class SignUp(ft.UserControl):
             error = False
             self.text_confirm_password.error_text = ""
 
-
         # Enable submit button if all fields are valid
         if not all([self.text_username.value, self.text_email.value, self.text_password.value, self.text_confirm_password.value]):
             # print("Please fill in all fields")
@@ -94,6 +98,7 @@ class SignUp(ft.UserControl):
 
         print("Name:", self.text_username.value)
         print("Email:", self.text_email.value)
+        self.page.session.set("email", self.text_email.value)
         print("Hashed Password:", hashed_password)
         # print("Confirm Password:", text_confirm_password.value)
         data = {

@@ -29,7 +29,6 @@ class BicepCurl_Detection(UserControl):
         self.correct_count = 0
         self.incorrect_count = 0
         self.exercise_name = "Bicep Curl"
-        self.exercise_data = []
 
     def build(self):
         self.page.scroll = "adaptive"
@@ -44,6 +43,8 @@ class BicepCurl_Detection(UserControl):
                 self.reps_text = ft.Text(value="", size=18, weight=ft.FontWeight.BOLD)
                 self.warning_msg = ""
                 self.warning_text = ft.Text(value="", size=18, weight=ft.FontWeight.BOLD)
+                self.bicepcurl_Up_angles = []
+                self.bicepcurl_Down_angles = []
 
             def did_mount(self):
                 self.update_timer()
@@ -131,12 +132,12 @@ class BicepCurl_Detection(UserControl):
     
                                 # Visualize angle
                                 cv2.putText(image, str(angleL_hand),
-                                            tuple(np.multiply(elbowL, [640, 480]).astype(int)),
+                                            tuple(np.multiply(elbowL, [860, 645]).astype(int)),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.LINE_AA
                                             )
 
                                 cv2.putText(image, str(angleR_hand),
-                                            tuple(np.multiply(elbowR, [640, 480]).astype(int)),
+                                            tuple(np.multiply(elbowR, [860, 645]).astype(int)),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.LINE_AA
                                             )
 
@@ -158,12 +159,25 @@ class BicepCurl_Detection(UserControl):
                                 if (angleL_hand < 70 and angleR_hand < 70) and not warning:
                                     self.stage = "up"
                                     self.warning_msg = ""
+                                    
+                                    if len(self.bicepcurl_Up_angles) == self.correct_count:
+                                        self.page.session.set("angle_up", [angleL_hand, angleR_hand])
+                                        angle1 = self.page.session.get("angle_up")
+                                        self.bicepcurl_Up_angles.append(angle1)
+                                        
+                                    self.update_warning_text()
                                     self.update_warning_text()
 
                                 if angleL_hand > 170 and angleR_hand > 170 and self.stage == 'up' and not warning:
                                     self.stage = "down"
-                                    self.correct_count += 1
                                     self.warning_msg = ""
+                                    
+                                    if len(self.bicepcurl_Down_angles) == self.correct_count:
+                                        self.page.session.set("angle_down", [angleL_hand, angleR_hand])
+                                        angle2 = self.page.session.get("angle_down")
+                                        self.bicepcurl_Down_angles.append(angle2)
+
+                                    self.correct_count += 1
                                     print("Correct Rep:", self.correct_count)
                                     self.update_reps_text()
                                     self.update_warning_text()
@@ -225,24 +239,35 @@ class BicepCurl_Detection(UserControl):
                 ])
 
         camera = Camera()
-        def stop_Workout(self,e):
+        def stop_Workout(e):
             nonlocal camera
     
             correct_count = camera.correct_count
             incorrect_count = camera.incorrect_count
-
+            email = self.page.session.get("email")
             end_time = datetime.now().strftime("%H:%M:%S")
+
+            angle_Up = camera.bicepcurl_Up_angles
+            angle_Down = camera.bicepcurl_Down_angles
+            print("Bicep Curl Up Angles : " ,camera.bicepcurl_Up_angles)
+            print("Bicep Curl Down Angles : " ,camera.bicepcurl_Down_angles)
+
             data = {
-                "exercise_name": self.exercise_name,
-                "correct_reps": correct_count,
-                "incorrect_reps": incorrect_count,
-                "date": current_date,
-                "start_time": current_time,
-                "end_time": end_time,
-                # Add other data fields as needed
+                "Email": email,
+                "Exercise_Name": self.exercise_name,
+                "Correct_Reps": correct_count,
+                "Incorrect_Reps": incorrect_count,
+                "Angles" : {"BicepCurl_Up" : angle_Up, "BicepCurl_Down" : angle_Down},
+                "Date": current_date,
+                "Start_Time": current_time,
+                "End_Time": end_time,
             }
+
             mycol.insert_one(data)
             print("Exercise data inserted into MongoDB.")
+
+            cap.release()
+            cv2.destroyAllWindows() 
             self.page.go('/home')
 
             # page.go error

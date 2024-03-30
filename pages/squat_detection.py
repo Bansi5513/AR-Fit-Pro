@@ -44,7 +44,7 @@ class Squat_Detection(UserControl):
                 self.reps_text = ft.Text(value="", size=18, weight=ft.FontWeight.BOLD)
                 self.warning_msg = ""
                 self.warning_text = ft.Text(value="", size=18, weight=ft.FontWeight.BOLD)
-
+                self.knee_angles = []
             def did_mount(self):
                 self.update_timer()
 
@@ -110,12 +110,12 @@ class Squat_Detection(UserControl):
     
                                 # Visualize angle
                                 cv2.putText(image, str(angleL_knee),
-                                            tuple(np.multiply(kneeL, [640, 480]).astype(int)),
+                                            tuple(np.multiply(kneeL, [860, 645]).astype(int)),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.LINE_AA
                                             )
 
                                 cv2.putText(image, str(angleR_knee),
-                                            tuple(np.multiply(kneeR, [640, 480]).astype(int)),
+                                            tuple(np.multiply(kneeR, [860, 645]).astype(int)),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2, cv2.LINE_AA
                                             )
 
@@ -182,6 +182,12 @@ class Squat_Detection(UserControl):
 
                                 elif angleL_knee > 90 and angleR_knee > 90 and self.stage == 2:
                                     self.warning_msg = ""
+
+                                    if len(self.knee_angles) == self.correct_count:
+                                        self.page.session.set("knee_angle", [angleL_knee, angleR_knee])
+                                        angle = self.page.session.get("knee_angle")
+                                        self.knee_angles.append(angle)
+
                                     self.stage=1
                                     self.correct_count += 1
                                     print("Correct Rep:", self.correct_count)
@@ -241,25 +247,35 @@ class Squat_Detection(UserControl):
                 ])
 
         camera = Camera()
-        def stop_Workout(self,e):
+        def stop_Workout(e):
             nonlocal camera
 
             correct_count = camera.correct_count
             incorrect_count = camera.incorrect_count
-
+            email = self.page.session.get("email")
             end_time = datetime.now().strftime("%H:%M:%S")
+
+            angle_squat = camera.knee_angles
+            print("Squat Knee Angles : " ,camera.knee_angles)
+
             data = {
-                "exercise_name": self.exercise_name,
-                "correct_reps": correct_count,
-                "incorrect_reps": incorrect_count,
-                "date": current_date,
-                "start_time": current_time,
-                "end_time": end_time,
-                # Add other data fields as needed
+                "Email": email,
+                "Exercise_Name": self.exercise_name,
+                "Correct_Reps": correct_count,
+                "Incorrect_Reps": incorrect_count,
+                "Angles" : {"Squat_Knee" : angle_squat},
+                "Date": current_date,
+                "Start_Time": current_time,
+                "End_Time": end_time,
             }
+
+            cap.release()
+            cv2.destroyAllWindows() 
             mycol.insert_one(data)
             print("Exercise data inserted into MongoDB.")
 
+            cap.release()
+            cv2.destroyAllWindows()
             self.page.go('/home')
 
             # page.go error

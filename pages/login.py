@@ -56,6 +56,7 @@ class Login(ft.UserControl):
             if user_password != hashlib.sha256(self.text_password.value.encode()).hexdigest():
                 self.text_password.error_text = "Invalid password."
             else:
+                self.page.session.set("email", self.text_email.value)
                 print("Login successful")
                 self.page.go('/home')
         else:
