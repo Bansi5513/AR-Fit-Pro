@@ -2,14 +2,9 @@ import flet as ft
 from flet import *
 from flet import TextField, OutlinedButton
 import re
-import pymongo
 import hashlib
 from datetime import datetime
 
-myclient = pymongo.MongoClient('mongodb://localhost:27017')
-
-mydb = myclient["ExerciseTracking"]
-mycol = mydb["User"]
 
 current_date = datetime.now().strftime("%d-%m-%Y")
 
@@ -43,21 +38,16 @@ class SignUp(ft.UserControl):
         else:
             error = False
             self.text_username.error_text = ""
-
-        existing_user = mycol.find_one({"Email": self.text_email.value})  
+            
         # Validate email format
         if self.text_email.value and not re.fullmatch(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{1,7}\b', self.text_email.value):
             error = True
             self.submit_button.disabled = True
             self.text_email.error_text = "Invalid email format"
-        elif existing_user:
-            error = True
-            self.submit_button.disabled = True
-            self.text_email.error_text = "Email already exists"
         else:
             error = False
             self.text_email.error_text = ""
-
+            
 
         # Validate password format
         if self.text_password.value and len(self.text_password.value) < 6:
@@ -81,6 +71,7 @@ class SignUp(ft.UserControl):
             error = False
             self.text_confirm_password.error_text = ""
 
+
         # Enable submit button if all fields are valid
         if not all([self.text_username.value, self.text_email.value, self.text_password.value, self.text_confirm_password.value]):
             # print("Please fill in all fields")
@@ -98,19 +89,24 @@ class SignUp(ft.UserControl):
 
         print("Name:", self.text_username.value)
         print("Email:", self.text_email.value)
-        self.page.session.set("email", self.text_email.value)
+
+        # message passing
+        self.page.session.set("key", self.text_email.value)
+
+        value = self.page.session.get("key")
+        print(value)
         print("Hashed Password:", hashed_password)
-        # print("Confirm Password:", text_confirm_password.value)
-        data = {
+        data_1 = {
                 "Name": self.text_username.value,
                 "Email": self.text_email.value,
                 "Password": hashed_password,
                 "Date": current_date,
                 # Add other data fields as needed
-            }
-        mycol.insert_one(data)
-        print("Exercise data inserted into MongoDB.")
-        self.page.go('/home')
+        }
+
+        self.page.session.set("data_1", data_1)
+        # mycol.insert_one(data)
+        self.page.go('/screen1')
 
     def build(self):
 

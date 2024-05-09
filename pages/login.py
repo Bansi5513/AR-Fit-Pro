@@ -57,6 +57,8 @@ class Login(ft.UserControl):
                 self.text_password.error_text = "Invalid password."
             else:
                 self.page.session.set("email", self.text_email.value)
+
+                self.page.session.set("data", user_data)
                 print("Login successful")
                 self.page.go('/home')
         else:

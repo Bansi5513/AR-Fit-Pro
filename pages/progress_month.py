@@ -1,0 +1,239 @@
+from flet import *
+import flet as ft
+import numpy as np
+import pymongo
+from datetime import datetime, timedelta
+import matplotlib
+matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import calendar
+
+current_date = datetime.now().strftime("%Y-%m-%d")
+myclient = pymongo.MongoClient('mongodb://localhost:27017')
+
+mydb = myclient["ExerciseTracking"]
+mycol = mydb["Exercise"]
+
+class Progress_Month(UserControl):
+    def __init__(self, page):
+        super().__init__()
+        self.page = page
+
+    def build(self):
+        self.page.scroll = "adaptive"
+
+        # Navigation bar with icons and onclick actions
+        navigation_bar = ft.Row(
+            controls=[
+                ft.Image(src="logo1.png", width=100, height=100, fit=ft.ImageFit.CONTAIN), # Logo on the top left
+                ft.Container(width=940), # Container acting as a spacer to push the navigation items to the right
+                ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=ft.IconButton(
+                                icon=ft.icons.HOME_ROUNDED, # Using built-in icon
+                                icon_color="white",
+                                on_click=lambda _: self.page.go('/home')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                        ft.Container(
+                            content=ft.IconButton(
+                                icon=ft.icons.DIRECTIONS_RUN_ROUNDED, # Replace with actual icon name for training
+                                icon_color="white",
+                                on_click=lambda _: self.page.go('/training')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                        ft.Container(
+                            content=ft.IconButton(
+                                icon=ft.icons.AUTO_GRAPH_ROUNDED, # Replace with actual icon name for progress
+                                icon_color="white",
+                                on_click=lambda _: self.page.go('/progress')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                        ft.Container(
+                            content=ft.IconButton(
+                                icon=ft.icons.ACCOUNT_CIRCLE_SHARP, # Replace with actual icon name for profile
+                                icon_color="white",
+                                on_click=lambda _: self.page.go('/profile')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                    ],
+                    alignment=ft.alignment.center
+                )
+            ],
+            alignment=ft.alignment.center
+        )
+
+
+        progress_bar = ft.Container(
+            content=ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=ft.TextButton(
+                                text="Day",
+                                on_click=lambda _: self.page.go('/progress')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                        ft.Container(
+                            content=ft.TextButton(
+                                text="Week",
+                                on_click=lambda _: self.page.go('/progress_week')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                        ft.Container(
+                            content=ft.TextButton(
+                                text="Month",
+                                on_click=lambda _: self.page.go('/progress_month')
+                            ),
+                            padding=ft.padding.all(30) # Add padding around the icon button
+                        ),
+                        
+                    ],
+                    alignment=ft.alignment.center,
+                ),
+            margin=ft.margin.only(top=5),
+        )
+
+
+        email = self.page.session.get("email")
+
+        count1 = self.page.session.get("bicep_curl")
+        count2 = self.page.session.get("squat")
+
+        # print(count1,count2)
+
+        if count1 is not None:
+            end_date = datetime.now()
+            start_date = datetime(end_date.year, end_date.month, 1) # Set start date to the first day of the current month
+
+            query = {
+                "Email": email,
+                "Exercise_Name": "Bicep Curl",
+                "Date": {"$gte": start_date.strftime("%Y-%m-%d"), "$lte": end_date.strftime("%Y-%m-%d")}
+            }
+            # Retrieve exercise data from MongoDB
+            exercise_data = list(mycol.find(query))
+
+            # Convert MongoDB data to a DataFrame for easy manipulation
+            df = pd.DataFrame(exercise_data)
+
+            # Convert 'Date' column to datetime format
+            df['Date'] = pd.to_datetime(df['Date'])
+
+            # Group data by date and sum up the reps
+            df_grouped = df.groupby('Date').sum()
+
+            # Get the date range from the first day to the last day of the current month
+            dates = pd.date_range(start=start_date, end=start_date + pd.offsets.MonthEnd(), freq='D')
+
+            # Merge exercise data with the date DataFrame to fill missing dates with zeros
+            df_merged = pd.DataFrame({'Date': dates}).merge(df_grouped, on='Date', how='left').fillna(0)
+
+            # Plot the bar graph
+            plt.figure(figsize=(len(df_merged) * 0.4, 6))  # Adjust the figure size as needed
+            plt.bar(np.arange(1, len(df_merged) + 1), df_merged['Correct_Reps'], width=0.5, color='skyblue')  # Use 1-based index for x-axis ticks
+            plt.title('BICEP CURL', fontsize=20)
+            plt.ylabel('Correct Reps')
+            # Get the name of the current month
+            current_month_name = calendar.month_name[end_date.month]
+
+            # Set x-axis heading to the name of the current month
+            plt.xlabel(current_month_name)
+            plt.xticks(np.arange(1, len(df_merged) + 1), df_merged['Date'].dt.day)  # Set x-axis tick labels to day of the month
+            plt.grid(axis='y', linestyle='--', alpha=0.7)
+            plt.tight_layout()
+
+            # Save plot to a file
+            plt.savefig('bicep_month.png')
+
+            # Close plot to free memory
+            plt.close()
+
+
+        if count2 is not None:
+            end_date = datetime.now()
+            start_date = datetime(end_date.year, end_date.month, 1) # Set start date to the first day of the current month
+
+            query = {
+                "Email": email,
+                "Exercise_Name": "Squat",
+                "Date": {"$gte": start_date.strftime("%Y-%m-%d"), "$lte": end_date.strftime("%Y-%m-%d")}
+            }
+            # Retrieve exercise data from MongoDB
+            exercise_data = list(mycol.find(query))
+
+            # Convert MongoDB data to a DataFrame for easy manipulation
+            df = pd.DataFrame(exercise_data)
+
+            # Convert 'Date' column to datetime format
+            df['Date'] = pd.to_datetime(df['Date'])
+
+            # Group data by date and sum up the reps
+            df_grouped = df.groupby('Date').sum()
+
+            # Get the date range from the first day to the last day of the current month
+            dates = pd.date_range(start=start_date, end=start_date + pd.offsets.MonthEnd(), freq='D')
+
+            # Merge exercise data with the date DataFrame to fill missing dates with zeros
+            df_merged = pd.DataFrame({'Date': dates}).merge(df_grouped, on='Date', how='left').fillna(0)
+
+            # Plot the bar graph
+            plt.figure(figsize=(len(df_merged) * 0.4, 6))  # Adjust the figure size as needed
+            plt.bar(np.arange(1, len(df_merged) + 1), df_merged['Correct_Reps'], width=0.5, color='skyblue')  # Use 1-based index for x-axis ticks
+            plt.title('SQUAT', fontsize=20)
+            plt.ylabel('Correct Reps')
+            # Get the name of the current month
+            current_month_name = calendar.month_name[end_date.month]
+
+            # Set x-axis heading to the name of the current month
+            plt.xlabel(current_month_name)
+            plt.xticks(np.arange(1, len(df_merged) + 1), df_merged['Date'].dt.day)  # Set x-axis tick labels to day of the month
+            plt.grid(axis='y', linestyle='--', alpha=0.7)
+            plt.tight_layout()
+
+            # Get the name of the current month
+            current_month_name = calendar.month_name[end_date.month]
+
+            # Set x-axis heading to the name of the current month
+            plt.xlabel(current_month_name)
+
+            # Save plot to a file
+            plt.savefig('squat_month.png')
+
+            # Close plot to free memory
+            plt.close()
+
+
+
+        # Progress Page Content
+        progress_title = ft.Container(
+            content=ft.Text("Workout Progress", size=24, weight=ft.FontWeight.BOLD),
+            margin=ft.margin.only(top=20, bottom=20)
+        )
+        graph_container = ft.Container(
+            ft.Row([
+                ft.Image(src="bicep_month.png", height=320, fit=ft.ImageFit.CONTAIN),
+                ft.Image(src="squat_month.png", height=320, fit=ft.ImageFit.CONTAIN),
+            ]),
+            margin=ft.margin.only(top=10) # Add some margin to separate the title and the graph
+        )
+
+        # Add navigation bar, title, and graph container to the page
+        return ft.Container(
+            margin=ft.margin.only(left=10, top=0),
+            content=ft.Column([
+                navigation_bar,
+                progress_title,
+                progress_bar,
+                graph_container,
+            ], alignment="center")
+        )
+        

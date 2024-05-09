@@ -6,6 +6,7 @@ import numpy as np
 import mediapipe as mp
 import pymongo
 from datetime import datetime
+import time
 
 # Get current date
 current_date = datetime.now().strftime("%Y-%m-%d")
@@ -150,7 +151,7 @@ class BicepCurl_Detection(UserControl):
                                     self.warning_msg = "Back Not Straight"
                                     self.update_warning_text()
 
-                                elif (angleL_hand < 20 or angleR_hand < 20) and level == 0:
+                                elif (angleL_hand < 15 or angleR_hand < 15) and level == 0:
                                     warning = True
                                     level = 1
                                     self.warning_msg = "Dumbbell is rising above your shoulder level"
@@ -224,6 +225,13 @@ class BicepCurl_Detection(UserControl):
             def update_reps_text(self):
                 self.reps_text.value = f"Correct Reps : {self.correct_count}, Incorrect Reps : {self.incorrect_count}"
 
+                count = self.page.session.get("bicep_curl")
+                print(count)
+                if self.correct_count == count:
+                    time.sleep(1)
+                    complete_Workout(None)
+
+
             def update_warning_text(self):
                 self.warning_text.value = f"Warning : {self.warning_msg}"
 
@@ -252,27 +260,97 @@ class BicepCurl_Detection(UserControl):
             print("Bicep Curl Up Angles : " ,camera.bicepcurl_Up_angles)
             print("Bicep Curl Down Angles : " ,camera.bicepcurl_Down_angles)
 
-            data = {
+
+            query = {
                 "Email": email,
-                "Exercise_Name": self.exercise_name,
-                "Correct_Reps": correct_count,
-                "Incorrect_Reps": incorrect_count,
-                "Angles" : {"BicepCurl_Up" : angle_Up, "BicepCurl_Down" : angle_Down},
-                "Date": current_date,
-                "Start_Time": current_time,
-                "End_Time": end_time,
+                "Exercise_Name": "Bicep Curl",
+                "Date": current_date
             }
 
-            mycol.insert_one(data)
-            print("Exercise data inserted into MongoDB.")
+            existing_data = mycol.find_one(query)
 
+            if existing_data:
+                # Update existing document with incremented counts
+                new_correct_count = existing_data["Correct_Reps"] + correct_count
+                new_incorrect_count = existing_data["Incorrect_Reps"] + incorrect_count
+
+                # Update angles
+                existing_data["Angles"]["BicepCurl_Up"].extend(camera.bicepcurl_Up_angles)
+                existing_data["Angles"]["BicepCurl_Down"].extend(camera.bicepcurl_Down_angles)
+
+                # Update other fields
+                existing_data["Correct_Reps"] = new_correct_count
+                existing_data["Incorrect_Reps"] = new_incorrect_count
+                existing_data["End_Time"] = end_time
+
+                mycol.update_one(query, {"$set": existing_data})
+                print("Exercise data updated in MongoDB.")
+            else:
+
+                data = {
+                    "Email": email,
+                    "Exercise_Name": self.exercise_name,
+                    "Correct_Reps": correct_count,
+                    "Incorrect_Reps": incorrect_count,
+                    "Angles" : {"BicepCurl_Up" : angle_Up, "BicepCurl_Down" : angle_Down},
+                    "Date": current_date,
+                    "Start_Time": current_time,
+                    "End_Time": end_time,
+                }
+
+                mycol.insert_one(data)
+                print("Exercise data inserted into MongoDB.")
+            
             cap.release()
             cv2.destroyAllWindows() 
             self.page.go('/home')
 
             # page.go error
             
+        def complete_Workout(e):
+            nonlocal camera
+    
+            correct_count = camera.correct_count
+            incorrect_count = camera.incorrect_count
+            email = self.page.session.get("email")
+            end_time = datetime.now().strftime("%H:%M:%S")
 
+            angle_Up = camera.bicepcurl_Up_angles
+            angle_Down = camera.bicepcurl_Down_angles
+            print("Bicep Curl Up Angles : " ,camera.bicepcurl_Up_angles)
+            print("Bicep Curl Down Angles : " ,camera.bicepcurl_Down_angles)
+
+
+            query = {
+                "Email": email,
+                "Exercise_Name": "Bicep Curl",
+                "Date": current_date
+            }
+
+            existing_data = mycol.find_one(query)
+
+            if existing_data:
+                # Update existing document with incremented counts
+                new_correct_count = existing_data["Correct_Reps"] + correct_count
+                new_incorrect_count = existing_data["Incorrect_Reps"] + incorrect_count
+
+                # Update angles
+                existing_data["Angles"]["BicepCurl_Up"].extend(camera.bicepcurl_Up_angles)
+                existing_data["Angles"]["BicepCurl_Down"].extend(camera.bicepcurl_Down_angles)
+
+                # Update other fields
+                existing_data["Correct_Reps"] = new_correct_count
+                existing_data["Incorrect_Reps"] = new_incorrect_count
+                existing_data["End_Time"] = end_time
+
+                mycol.update_one(query, {"$set": existing_data})
+                print("Exercise data updated in MongoDB.")
+            else:
+                print("ERROR")
+            
+            cap.release()
+            cv2.destroyAllWindows() 
+            self.page.go('/congratulation')
 
         return ft.Container(
             # margin= ft.margin.all(10),
